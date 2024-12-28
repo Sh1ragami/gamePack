@@ -1,0 +1,51 @@
+* {
+  margin: 0 auto;
+  text-align: center;
+  font-family: "Georgia", serif;
+}
+
+h1 {
+  margin: 15px;
+  margin-top: 20vh;
+  color: #6e3b1e;
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 20px;
+  background-color: #7a4e13;
+  border-radius: 15px;
+  padding: 10px;
+  box-shadow: 6px 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.tile {
+  width: 70px;
+  height: 70px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: #4d2b0e;
+  background: linear-gradient(145deg, #c79c60, #a87c4d);
+  box-shadow: inset -2px -2px 5px rgba(255, 255, 255, 0.6),
+    inset 2px 2px 5px rgba(0, 0, 0, 0.2), 4px 4px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tile:active {
+  background: linear-gradient(145deg, #a87c4d, #c79c60);
+}
+
+.empty {
+  background: none;
+  cursor: default;
+  box-shadow: none;
+}
+
+.empty:active {
+  background: none;
+}
