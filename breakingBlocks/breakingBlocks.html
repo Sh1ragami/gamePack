@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>改良版ブロック崩しゲーム</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(120deg, #6a11cb, #2575fc);
+        color: white;
+        text-align: center;
+      }
+      canvas {
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid white;
+        border-radius: 8px;
+        display: block;
+        margin: 20px auto;
+      }
+      #message {
+        margin-top: 20px;
+      }
+      button {
+        background: #2575fc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin: 5px;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      button:hover {
+        background: #6a11cb;
+      }
+      .back {
+        color: white;
+        background: none;
+        border: none;
+        padding: 10px 20px;
+        font-size: 30px;
+        margin: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .back:hover {
+        color: #ff7043;
+      }
+      .end-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+
+      .end-screen p {
+        margin-bottom: 20px;
+      }
+
+      .end-screen button {
+        margin-top: 20px;
+      }
+      #status {
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+      #score {
+        font-size: 20px;
+        margin-top: 10px;
+      }
+      .end-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 40px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 1s ease;
+      }
+
+      .end-screen.show {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      #gameOverScreen p {
+        animation: gameOverAnimation 2s infinite;
+      }
+
+      #gameClearScreen p {
+        animation: gameClearAnimation 2s infinite;
+      }
+
+      @keyframes gameOverAnimation {
+        0% {
+          transform: scale(1);
+          color: red;
+        }
+        50% {
+          transform: scale(1.2);
+          color: orange;
+        }
+        100% {
+          transform: scale(1);
+          color: red;
+        }
+      }
+
+      @keyframes gameClearAnimation {
+        0% {
+          transform: scale(1);
+          color: lightgreen;
+        }
+        50% {
+          transform: scale(1.2);
+          color: yellow;
+        }
+        100% {
+          transform: scale(1);
+          color: lightgreen;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameOverScreen" class="end-screen">
+      <p>ゲームオーバー</p>
+      <br />
+      <button class="back" onclick="reRoad()">戻る</button>
+    </div>
+    <div id="gameClearScreen" class="end-screen">
+      <p>ゲームクリア</p>
+      <button class="back" onclick="reRoad()">閉じる</button>
+    </div>
+    <div id="message">
+      <p id="status">難易度を選択してください：</p>
+      <button onclick="startGame(1)">簡単</button>
+      <button onclick="startGame(1.2)">普通</button>
+      <button onclick="startGame(1.5)">難しい</button>
+    </div>
+    <p id="score" style="visibility: hidden">スコア: 0</p>
+    <canvas id="MyCanvas" width="480" height="320"></canvas>
+
+    <script>
+      const canvas = document.getElementById("MyCanvas");
+      const ctx = canvas.getContext("2d");
+      const status = document.getElementById("status");
+      const message = document.getElementById("message");
+      const scoreElement = document.getElementById("score");
+
+      let ballRadius = 5;
+      let paddleHeight = 10;
+      let paddleWidth = 90;
+      let paddleX, rightPressed, leftPressed, x, y, dx, dy;
+      let bricks, brickRowCount, brickColumnCount, brickWidth, brickHeight;
+      let intervalId;
+      let gameRunning = false;
+      let score = 0;
+
+      // パドルを動かすためのリスナー
+      document.addEventListener("keydown", keyDownHandler);
+      document.addEventListener("keyup", keyUpHandler);
+
+      function keyDownHandler(e) {
+        if (e.key === "Right" || e.key === "ArrowRight" || e.key === "d") {
+          rightPressed = true;
+        } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === "a") {
+          leftPressed = true;
+        }
+      }
+
+      function keyUpHandler(e) {
+        if (e.key === "Right" || e.key === "ArrowRight" || e.key === "d") {
+          rightPressed = false;
+        } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === "a") {
+          leftPressed = false;
+        }
+      }
+
+      function initializeGame(difficulty) {
+        const speed = difficulty * 2;
+        const rows = 3 + difficulty;
+        const cols = 5;
+
+        dx = speed;
+        dy = -speed;
+        x = canvas.width / 2;
+        y = canvas.height - 30;
+        paddleX = (canvas.width - paddleWidth) / 2;
+        rightPressed = false;
+        leftPressed = false;
+
+        brickRowCount = rows;
+        brickColumnCount = cols;
+        brickWidth = canvas.width / cols - 5;
+        brickHeight = 15;
+        bricks = [];
+        for (let c = 0; c < brickColumnCount; c++) {
+          bricks[c] = [];
+          for (let r = 0; r < brickRowCount; r++) {
+            bricks[c][r] = { x: 0, y: 0, status: 1 };
+          }
+        }
+        score = 0;
+        scoreElement.textContent = `スコア: ${score}`;
+      }
+
+      function playSound(url) {
+        const audio = new Audio(url);
+        audio.play();
+      }
+
+      function showGameOverScreen() {
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        gameOverScreen.classList.add("show");
+        playSound("sounds/gameOver.mp3");
+      }
+
+      function showGameClearScreen() {
+        const gameClearScreen = document.getElementById("gameClearScreen");
+        gameClearScreen.classList.add("show");
+        playSound("sounds/gameClear.mp3");
+      }
+
+      function reRoad() {
+        location.reload();
+      }
+
+      function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff5722";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(
+          paddleX,
+          canvas.height - paddleHeight,
+          paddleWidth,
+          paddleHeight
+        );
+        ctx.fillStyle = "#00e676";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function drawBricks() {
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            if (bricks[c][r].status === 1) {
+              const brickX = c * (brickWidth + 5);
+              const brickY = r * (brickHeight + 5) + 30;
+              bricks[c][r].x = brickX;
+              bricks[c][r].y = brickY;
+              ctx.beginPath();
+              ctx.rect(brickX, brickY, brickWidth, brickHeight);
+              ctx.fillStyle = "#ffd600";
+              ctx.fill();
+              ctx.closePath();
+            }
+          }
+        }
+      }
+
+      function collisionDetection() {
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            const brick = bricks[c][r];
+            if (brick.status === 1) {
+              if (
+                x > brick.x &&
+                x < brick.x + brickWidth &&
+                y > brick.y &&
+                y < brick.y + brickHeight
+              ) {
+                dy = -dy;
+                brick.status = 0;
+                score++;
+                scoreElement.textContent = `スコア: ${score}`;
+                playSound("sounds/brickHit.mp3");
+              }
+            }
+          }
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        collisionDetection();
+
+        x += dx;
+        y += dy;
+
+        if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+          dx = -dx;
+        }
+        if (y + dy < ballRadius) {
+          dy = -dy;
+        } else if (y + dy > canvas.height - ballRadius) {
+          if (x > paddleX && x < paddleX + paddleWidth) {
+            dy = -dy;
+          } else {
+            clearInterval(intervalId);
+            gameRunning = false;
+            canvas.style.display = "none";
+            scoreElement.style.visibility = "hidden";
+            showGameOverScreen();
+            return;
+          }
+        }
+
+        if (rightPressed) {
+          paddleX = Math.min(paddleX + 7, canvas.width - paddleWidth);
+        } else if (leftPressed) {
+          paddleX = Math.max(paddleX - 7, 0);
+        }
+
+        let allBricksCleared = true;
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            if (bricks[c][r].status === 1) {
+              allBricksCleared = false;
+              break;
+            }
+          }
+          if (!allBricksCleared) break;
+        }
+
+        if (allBricksCleared) {
+          clearInterval(intervalId);
+          gameRunning = false;
+          canvas.style.display = "none";
+          scoreElement.style.visibility = "hidden";
+          showGameClearScreen();
+        }
+      }
+
+      function startGame(difficulty) {
+        message.style.visibility = "hidden";
+        canvas.style.display = "block";
+        scoreElement.style.visibility = "visible";
+        initializeGame(difficulty);
+        if (!gameRunning) {
+          intervalId = setInterval(draw, 10);
+          gameRunning = true;
+        }
+      }
+    </script>
+  </body>
+</html>
